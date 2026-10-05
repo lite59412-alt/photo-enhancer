@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI DSLR Photo Enhancer</title>
 
-  <!-- TensorFlow & Upscaler AI engine (Local Browser) -->
+  <!-- TensorFlow & Upscaler AI engine -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@upscalerjs/default-model@latest/dist/umd/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/upscaler@latest/dist/browser/umd/upscaler.min.js"></script>
@@ -82,13 +82,12 @@
 
   <div class="card">
     <h2>✨ DSLR AI Photo Enhancer</h2>
-    <p>Photo upload karein aur browser me bina kisi error ke sharp HD banayein</p>
+    <p>Photo upload karein aur crisp sharp HD banayein</p>
 
     <div class="upload-zone">
       <input type="file" id="imageInput" accept="image/*" />
     </div>
 
-    <!-- Hidden source img for processing -->
     <img id="sourceImg" style="display:none;" />
 
     <button id="processBtn" disabled>Enhance & Sharp Photo</button>
@@ -111,14 +110,7 @@
     const enhancedImage = document.getElementById('enhancedImage');
     const downloadLink = document.getElementById('downloadLink');
 
-    let upscalerInstance = null;
-
-    // AI Engine initialize
-    try {
-      upscalerInstance = new Upscaler();
-    } catch (e) {
-      console.error(e);
-    }
+    const upscaler = new Upscaler();
 
     imageInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -126,7 +118,7 @@
         sourceImg.src = URL.createObjectURL(file);
         sourceImg.onload = () => {
           processBtn.disabled = false;
-          status.innerText = "Photo select ho gayi! Ab 'Enhance & Sharp Photo' par click karein.";
+          status.innerText = "Photo select ho gayi! Ab button dabayein.";
         };
       }
     });
@@ -134,23 +126,25 @@
     processBtn.addEventListener('click', async () => {
       processBtn.disabled = true;
       resultArea.style.display = 'none';
-      status.innerText = "Enhancing photo... Pixel details reconstruct ho rahi hain (Device GPU use ho raha hai)...";
+      status.innerText = "Enhancing started... (GPU memory safe mode)";
 
       try {
-        if (!upscalerInstance) {
-          upscalerInstance = new Upscaler();
-        }
-
-        // Direct Browser Upscaling (No external server fail)
-        const enhancedDataUrl = await upscalerInstance.upscale(sourceImg);
+        // Safe Patch-by-Patch mode (fixes WebGL 8192 texture overflow)
+        const enhancedDataUrl = await upscaler.upscale(sourceImg, {
+          patchSize: 64,
+          padding: 6,
+          progress: (amount) => {
+            status.innerText = `Processing: Math calculations ${Math.round(amount * 100)}% complete...`;
+          }
+        });
 
         enhancedImage.src = enhancedDataUrl;
         downloadLink.href = enhancedDataUrl;
         resultArea.style.display = 'flex';
-        status.innerText = "Success! Photo enhance ho gayi.";
+        status.innerText = "100% Complete! HD photo taiyar hai.";
       } catch (err) {
         console.error(err);
-        status.innerText = "Error: Processing fail hui: " + err.message;
+        status.innerText = "Error: " + err.message;
       } finally {
         processBtn.disabled = false;
       }
