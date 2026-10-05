@@ -4,53 +4,55 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI DSLR Photo Enhancer</title>
-  <!-- Gradio Client library -->
-  <script type="module">
-    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
-    window.GradioClient = Client;
-  </script>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0f172a;
-      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0b0f19;
+      color: #f1f5f9;
       text-align: center;
-      padding: 30px 15px;
+      padding: 20px;
       margin: 0;
     }
     .card {
-      max-width: 650px;
-      margin: 0 auto;
+      max-width: 520px;
+      margin: 20px auto;
       background: #1e293b;
-      padding: 30px;
+      padding: 24px;
       border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
     }
-    h1 { margin-bottom: 8px; color: #38bdf8; }
+    h2 { color: #38bdf8; margin-top: 0; }
     p { color: #94a3b8; font-size: 14px; }
-    .upload-box {
+    .upload-zone {
       border: 2px dashed #475569;
+      padding: 20px;
       border-radius: 10px;
-      padding: 25px;
       margin: 20px 0;
-      cursor: pointer;
     }
+    input[type="file"] { width: 100%; color: #cbd5e1; }
     button {
-      background: linear-gradient(135deg, #0284c7, #2563eb);
+      background: #2563eb;
       color: white;
       border: none;
-      padding: 12px 28px;
+      padding: 14px 20px;
       font-size: 16px;
       font-weight: 600;
       border-radius: 8px;
       cursor: pointer;
-      transition: 0.3s;
+      width: 100%;
+      margin-top: 10px;
     }
     button:disabled { background: #475569; cursor: not-allowed; }
-    #status { margin-top: 15px; font-weight: bold; color: #38bdf8; }
+    #status {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #38bdf8;
+      line-height: 1.4;
+      word-break: break-word;
+    }
     .result-container {
       margin-top: 25px;
-      display: flex;
+      display: none;
       flex-direction: column;
       align-items: center;
       gap: 15px;
@@ -61,23 +63,24 @@
       border: 1px solid #334155;
     }
     .download-btn {
-      display: inline-block;
+      display: block;
       text-decoration: none;
       background: #10b981;
       color: white;
-      padding: 10px 20px;
+      padding: 12px 20px;
       border-radius: 6px;
       font-weight: bold;
+      width: 80%;
     }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h1>✨ DSLR AI Photo Enhancer</h1>
-    <p>Low-quality ya blurry photo upload karein aur crisp sharp HD me convert karein</p>
+    <h2>✨ DSLR AI Photo Enhancer</h2>
+    <p>Low-quality photo upload karein aur sharp HD me convert karein</p>
 
-    <div class="upload-box">
+    <div class="upload-zone">
       <input type="file" id="imageInput" accept="image/*" />
     </div>
 
@@ -85,14 +88,16 @@
 
     <div id="status"></div>
 
-    <div class="result-container" id="resultArea" style="display: none;">
-      <h3>Enhanced Result (Clear & Sharp)</h3>
+    <div class="result-container" id="resultArea">
+      <h3>Enhanced Result</h3>
       <img id="enhancedImage" alt="Enhanced Photo" />
       <a id="downloadLink" class="download-btn" download="sharp_image.png">Download HD Photo</a>
     </div>
   </div>
 
   <script type="module">
+    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+
     const imageInput = document.getElementById('imageInput');
     const processBtn = document.getElementById('processBtn');
     const status = document.getElementById('status');
@@ -100,45 +105,54 @@
     const enhancedImage = document.getElementById('enhancedImage');
     const downloadLink = document.getElementById('downloadLink');
 
-    let selectedFile = null;
+    let rawFile = null;
 
     imageInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
-        selectedFile = e.target.files[0];
+        rawFile = e.target.files[0];
         processBtn.disabled = false;
         status.innerText = "Photo select ho gayi! Ab 'Enhance' par click karein.";
       }
     });
 
     processBtn.addEventListener('click', async () => {
-      if (!selectedFile) return;
+      if (!rawFile) return;
 
       processBtn.disabled = true;
-      status.innerText = "AI processing start ho rahi hai... High-resolution details add ki ja rahi hain (kripya thoda wait karein)...";
+      resultArea.style.display = "none";
+      status.innerText = "AI Space connect ho raha hai... (Space wake-up me 10-20 sec lag sakte hain)";
 
       try {
-        // Free Real-ESRGAN Gradio client connection
-        const app = await window.GradioClient.connect("akhaliq/Real-ESRGAN");
+        // High stability Real-ESRGAN instance connect
+        const app = await Client.connect("doevent/Face-Real-ESRGAN");
 
-        // Model run karna (File upload karke 4x sharp karna)
-        const result = await app.predict("/predict", [
-          selectedFile, // User ki photo
-          "R-ESRGAN 4x+", // Sabse sharp model option
-          0.5 // Denoise strength
+        status.innerText = "Processing image... Pixels reconstruct ho rahe hain...";
+
+        const result = await app.predict(0, [
+          rawFile,     // Uploaded image file
+          "Base",      // Mode
+          2,           // Denoise
+          4            // 4x Scale
         ]);
 
-        if (result && result.data && result.data[0]) {
-          const finalUrl = result.data[0].url || result.data[0];
-          enhancedImage.src = finalUrl;
-          downloadLink.href = finalUrl;
+        if (result && result.data) {
+          let outputUrl = "";
+          if (Array.isArray(result.data)) {
+            outputUrl = result.data[0]?.url || result.data[0];
+          } else {
+            outputUrl = result.data?.url || result.data;
+          }
+
+          enhancedImage.src = outputUrl;
+          downloadLink.href = outputUrl;
           resultArea.style.display = "flex";
-          status.innerText = "Success! Photo DSLR jaisi sharp ho chuki hai.";
+          status.innerText = "Done! Image clear ho chuki hai.";
         } else {
-          status.innerText = "Processing poori hui lekin result nahi mila.";
+          status.innerText = "Model ne response diya par image nahi mili.";
         }
-      } catch (error) {
-        console.error(error);
-        status.innerText = "Error: Processing me problem aayi. Kripya dobara try karein.";
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Error: " + (err.message || "Connection timeout. Dobara click karein.");
       } finally {
         processBtn.disabled = false;
       }
@@ -147,4 +161,3 @@
 
 </body>
 </html>
-
